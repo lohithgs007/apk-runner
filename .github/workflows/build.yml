@@ -13,9 +13,12 @@ on:
         description: JSON build config from Wrapline
         required: true
 
+permissions:
+  contents: read
+  id-token: write
+
 env:
   CONFIG: ${{ inputs.config }}
-  BUILD_CALLBACK_SECRET: ${{ secrets.BUILD_CALLBACK_SECRET }}
 
 jobs:
   android:
