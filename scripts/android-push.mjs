@@ -175,25 +175,4 @@ public class WraplineMessagingService extends FirebaseMessagingService {
 `,
 );
 
-// 6. Hook MainActivity so the token registers on first launch.
-const mainActivityPath = `${javaDir}/MainActivity.java`;
-let mainActivity = readFileSync(mainActivityPath, "utf8");
-if (!mainActivity.includes("WraplinePush")) {
-  mainActivity = mainActivity.replace(
-    /public class MainActivity extends BridgeActivity \{/,
-    `public class MainActivity extends BridgeActivity {
-    @Override
-    public void onCreate(android.os.Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        WraplinePush.createChannel(this);
-        WraplinePush.registerToken();
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            requestPermissions(new String[] { "android.permission.POST_NOTIFICATIONS" }, 1001);
-        }
-    }
-`,
-  );
-  writeFileSync(mainActivityPath, mainActivity);
-}
-
 console.log("Firebase Cloud Messaging wired into the Android project");
