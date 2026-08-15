@@ -70,18 +70,20 @@ writeFileSync(gradlePath, gradle);
 
 console.log(`Android project configured (${screenOrientation}, ${permissions.size} permissions)`);
 
-// --- Safe areas: keep the web view below the status bar / camera cutout ---
+// Keep the native window out of fullscreen mode. Android 15 draws apps edge-to-edge
+// by default, so the WebView itself is also given the live system-bar insets below.
 const stylesPath = "android/app/src/main/res/values/styles.xml";
 if (existsSync(stylesPath)) {
   let styles = readFileSync(stylesPath, "utf8");
   const themeColor = config.theme_color ?? "#000000";
 
   const items = [
-    `        <item name="android:fitsSystemWindows">true</item>`,
     `        <item name="android:windowLayoutInDisplayCutoutMode">never</item>`,
+    `        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>`,
     `        <item name="android:windowTranslucentStatus">false</item>`,
     `        <item name="android:windowDrawsSystemBarBackgrounds">true</item>`,
     `        <item name="android:statusBarColor">${themeColor}</item>`,
+    `        <item name="android:navigationBarColor">${themeColor}</item>`,
   ].join("\n");
 
   // Apply to the main app theme(s) that Capacitor generates.
@@ -89,16 +91,9 @@ if (existsSync(stylesPath)) {
     /(<style name="AppTheme\.NoActionBar"[^>]*>)/,
     (match) => `${match}\n${items}`,
   );
-  if (!styles.includes("fitsSystemWindows")) {
+  if (!styles.includes("windowLayoutInDisplayCutoutMode")) {
     styles = styles.replace(/(<style name="AppTheme"[^>]*>)/, (match) => `${match}\n${items}`);
   }
   writeFileSync(stylesPath, styles);
   console.log("Applied status bar / display cutout safe areas");
-}
-
-// Ensure the launch activity does not draw under the cutout.
-let manifest2 = readFileSync(manifestPath, "utf8");
-if (!manifest2.includes("android:fitsSystemWindows")) {
-  manifest2 = manifest2.replace("<activity", `<activity\n            android:fitsSystemWindows="true"`);
-  writeFileSync(manifestPath, manifest2);
 }
