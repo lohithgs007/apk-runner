@@ -51,6 +51,7 @@ writeFileSync(
       ios: { contentInset: "always" },
       plugins: {
         SplashScreen: { backgroundColor: themeColor, launchAutoHide: true },
+        StatusBar: { overlaysWebView: false, backgroundColor: themeColor, style: "DEFAULT" },
       },
     },
     null,
