@@ -18,6 +18,9 @@ writeFileSync(
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.WebView;
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -43,14 +46,41 @@ public class MainActivity extends BridgeActivity {
             WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         controller.show(WindowInsetsCompat.Type.systemBars());
 
-        View webView = getBridge().getWebView();
+        WebView webView = getBridge().getWebView();
         ViewCompat.setOnApplyWindowInsetsListener(webView, (view, windowInsets) -> {
-            Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()
+            Insets bars = windowInsets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars()
                 | WindowInsetsCompat.Type.displayCutout());
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+
+            // Margins resize the WebView's actual viewport. Padding alone is not enough:
+            // fixed-position website navigation can still be painted below gesture/3-button
+            // navigation when Android 15 forces edge-to-edge rendering.
+            ViewGroup.LayoutParams current = view.getLayoutParams();
+            if (current instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams margins = (ViewGroup.MarginLayoutParams) current;
+                if (margins.leftMargin != bars.left || margins.topMargin != bars.top
+                        || margins.rightMargin != bars.right || margins.bottomMargin != bars.bottom) {
+                    margins.setMargins(bars.left, bars.top, bars.right, bars.bottom);
+                    view.setLayoutParams(margins);
+                }
+            } else {
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            }
             return windowInsets;
         });
         ViewCompat.requestApplyInsets(webView);
+
+        // Keep Android Back inside the wrapped site until its WebView history is empty.
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
 ${pushEnabled ? `
         WraplinePush.createChannel(this);
         WraplinePush.registerToken();
@@ -63,4 +93,4 @@ ${pushEnabled ? `
 `,
 );
 
-console.log("Applied persistent system bars and live display-cutout insets");
+console.log("Applied live system-bar insets and WebView back navigation");
